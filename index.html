@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Controle de Gols</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css"
+      rel="stylesheet"
+    />
+    <!-- Adicionar SDK do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <!-- Adicionar SDK do Firebase Auth -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <meta name="theme-color" content="#1d4ed8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <!-- Adicionar no head, após os outros scripts -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  </head>
+  <body class="bg-gray-100">
+    <!-- Login/Registro Container -->
+    <div
+      id="authContainer"
+      class="container mx-auto px-4 py-4 sm:py-8 max-w-lg"
+    >
+      <h1
+        class="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8 text-gray-800"
+      >
+        ⚽ Controle de Gols
+      </h1>
+
+      <!-- Formulário de Login -->
+      <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Login</h2>
+        <div class="mb-4">
+          <input
+            type="email"
+            id="loginEmail"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+            placeholder="Email"
+          />
+        </div>
+        <div class="mb-4">
+          <input
+            type="password"
+            id="loginPassword"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+            placeholder="Senha"
+          />
+        </div>
+        <button
+          onclick="login()"
+          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 w-full mb-3"
+        >
+          Entrar
+        </button>
+        <p id="authError" class="text-red-500 text-sm mt-2 hidden"></p>
+      </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div
+      id="mainContent"
+      class="container mx-auto px-2 sm:px-4 py-2 sm:py-8 max-w-4xl hidden"
+    >
+      <!-- Header mais compacto em mobile -->
+      <div
+        class="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-4 mb-4 sm:mb-6"
+      >
+        <div class="w-full sm:w-auto text-center sm:text-left">
+          <h1 class="text-xl sm:text-3xl font-bold text-gray-800 leading-tight">
+            ⚽ Controle de Gols
+          </h1>
+          <h2 class="text-base sm:text-xl text-gray-600 mt-1">Segundão F.C</h2>
+        </div>
+        <button
+          onclick="logout()"
+          class="w-full sm:w-auto text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-4 py-2"
+        >
+          Sair
+        </button>
+      </div>
+
+      <!-- Gerenciar Jogo - Layout mais compacto -->
+      <div class="bg-white rounded-lg shadow-md p-3 sm:p-6 mb-4 sm:mb-6">
+        <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
+          Gerenciar Jogo
+        </h2>
+
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input
+              type="date"
+              id="gameDate"
+              class="w-full sm:flex-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5"
+            />
+            <button
+              onclick="loadOrCreateGame()"
+              class="w-full sm:w-auto whitespace-nowrap text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2.5"
+            >
+              Carregar/Criar Jogo
+            </button>
+          </div>
+        </div>
+
+        <!-- Área do Jogo - Melhor organização em mobile -->
+        <div id="gameArea" class="hidden mt-4 sm:mt-6">
+          <div class="border-t border-gray-200 pt-4">
+            <h3 class="text-md font-semibold mb-3">
+              Adicionar Jogador ao Jogo
+            </h3>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                id="gamePlayerName"
+                class="w-full sm:flex-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5"
+                placeholder="Nome do jogador"
+              />
+              <button
+                onclick="addPlayerToGame()"
+                class="w-full sm:w-auto whitespace-nowrap text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2.5"
+              >
+                Adicionar ao Jogo
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabela de Jogadores - Responsiva -->
+          <div class="border-t border-gray-200 pt-4 mt-4">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-md font-semibold" id="gameDateTitle"></h3>
+              <button
+                onclick="exportGameAsImage()"
+                class="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-4 py-2 flex items-center gap-2"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
+                  />
+                </svg>
+                Exportar Imagem
+              </button>
+            </div>
+            <div class="overflow-x-auto -mx-3 sm:mx-0">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      class="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Jogador
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Gols
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="gamePlayersList"
+                  class="bg-white divide-y divide-gray-200"
+                ></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ranking Mensal - Responsivo -->
+      <div class="bg-white rounded-lg shadow-md p-3 sm:p-6">
+        <div
+          class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 mb-3 sm:mb-4"
+        >
+          <h2 class="text-lg sm:text-xl font-semibold">Ranking Mensal</h2>
+          <select
+            id="monthSelect"
+            onchange="updateMonthlyRanking()"
+            class="w-full sm:w-auto bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
+          ></select>
+        </div>
+        <div class="overflow-x-auto -mx-3 sm:mx-0">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th
+                  class="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  #
+                </th>
+                <th
+                  class="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Jogador
+                </th>
+                <th
+                  class="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Gols
+                </th>
+                <th
+                  class="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Jogos
+                </th>
+                <th
+                  class="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Média
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              id="monthlyRankingTable"
+              class="bg-white divide-y divide-gray-200"
+            ></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adicionar o container de exportação antes do fechamento do body -->
+    <div
+      id="exportContainer"
+      class="hidden fixed top-0 left-0 right-0 bottom-0 z-50"
+    >
+      <div class="absolute inset-0 bg-white">
+        <div class="max-w-3xl mx-auto p-8" id="exportContent">
+          <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">
+              ⚽ Segundão F.C
+            </h2>
+            <p class="text-xl text-gray-600" id="exportGameDate"></p>
+          </div>
+
+          <table class="w-full border-collapse border border-gray-200">
+            <thead class="bg-gray-100">
+              <tr>
+                <th
+                  class="border border-gray-200 px-6 py-4 text-left text-lg font-semibold text-gray-700"
+                >
+                  Jogador
+                </th>
+                <th
+                  class="border border-gray-200 px-6 py-4 text-center text-lg font-semibold text-gray-700"
+                >
+                  Gols
+                </th>
+              </tr>
+            </thead>
+            <tbody id="exportTableBody"></tbody>
+            <tfoot class="bg-gray-100">
+              <tr>
+                <td
+                  class="border border-gray-200 px-6 py-4 text-lg font-semibold text-gray-700"
+                >
+                  Total de Gols
+                </td>
+                <td
+                  class="border border-gray-200 px-6 py-4 text-center text-lg font-semibold text-gray-700"
+                  id="exportTotalGols"
+                ></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+    <script>
+      // Configuração do Firebase
+      const firebaseConfig = {
+        apiKey: "AIzaSyCQlqONtgIoqK8q35vU5ch4yWR2QsCPOj4",
+        authDomain: "segundao-fc9f0.firebaseapp.com",
+        databaseURL: "https://segundao-fc9f0-default-rtdb.firebaseio.com",
+        projectId: "segundao-fc9f0",
+        storageBucket: "segundao-fc9f0.firebasestorage.app",
+        messagingSenderId: "857976654829",
+        appId: "1:857976654829:web:b2786e802d9dc4007875e4"
+      };
+
+      // Inicializar Firebase
+      firebase.initializeApp(firebaseConfig);
+      const database = firebase.database();
+      let games = {};
+
+      // Inicializar Firebase Auth
+      const auth = firebase.auth();
+      let currentUser = null;
+
+      const ADMIN_EMAIL = "admin@segundao.com"; // Email do administrador
+      let isAdmin = false;
+
+      // Lista de emails autorizados
+      const AUTHORIZED_EMAILS = [
+        "admin@segundao.com",
+        "usuario1@email.com",
+        "usuario2@email.com"
+        // Adicione aqui os emails autorizados
+      ];
+
+      // Modificar monitoramento de autenticação
+      auth.onAuthStateChanged((user) => {
+        currentUser = user;
+        const authContainer = document.getElementById("authContainer");
+        const mainContent = document.getElementById("mainContent");
+
+        if (user) {
+          isAdmin = user.email === ADMIN_EMAIL;
+          authContainer.classList.add("hidden");
+          mainContent.classList.remove("hidden");
+          loadPlayers();
+        } else {
+          authContainer.classList.remove("hidden");
+          mainContent.classList.add("hidden");
+          games = {};
+          updateGamePlayersList();
+          updateMonthlyRanking();
+        }
+      });
+
+      // Modificar função de login
+      async function login() {
+        const email = document.getElementById("loginEmail").value;
+        const password = document.getElementById("loginPassword").value;
+        const errorElement = document.getElementById("authError");
+
+        if (!AUTHORIZED_EMAILS.includes(email)) {
+          errorElement.textContent = "Email não autorizado";
+          errorElement.classList.remove("hidden");
+          return;
+        }
+
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+          errorElement.classList.add("hidden");
+        } catch (error) {
+          errorElement.textContent = "Email ou senha inválidos";
+          errorElement.classList.remove("hidden");
+        }
+      }
+
+      // Função de Logout
+      function logout() {
+        auth.signOut();
+      }
+
+      // Modificar a função loadPlayers
+      function loadPlayers() {
+        if (!currentUser) return;
+
+        const ref = database.ref(`users/${currentUser.uid}/games`);
+
+        // Usar once para garantir o carregamento inicial completo
+        ref.once("value").then((snapshot) => {
+          games = snapshot.val() || {};
+          const gameDate = document.getElementById("gameDate").value;
+          if (gameDate && games[gameDate]) {
+            document.getElementById("gameArea").classList.remove("hidden");
+            updateGamePlayersList();
+          }
+          updateMonthSelect();
+        });
+      }
+
+      // Modificar a função savePlayers para ser mais robusta
+      function savePlayers() {
+        if (!currentUser) return Promise.reject("Usuário não autenticado");
+
+        const path = `users/${currentUser.uid}/games`;
+        return database
+          .ref(path)
+          .set(games)
+          .then(() => {
+            console.log("Dados salvos com sucesso:", games);
+            return games; // Retornar os dados salvos
+          })
+          .catch((error) => {
+            console.error("Erro ao salvar dados:", error);
+            showNotification("Erro ao salvar dados!", "error");
+            throw error;
+          });
+      }
+
+      // Modificar a função loadOrCreateGame
+      function loadOrCreateGame() {
+        const gameDate = document.getElementById("gameDate").value;
+        if (!gameDate) {
+          showNotification("Selecione uma data!", "error");
+          return;
+        }
+
+        if (!games) {
+          games = {};
+        }
+
+        if (!games[gameDate]) {
+          games[gameDate] = { players: [] };
+        }
+
+        document.getElementById("gameArea").classList.remove("hidden");
+        updateGamePlayersList();
+        updateMonthSelect();
+
+        // Salvar o estado inicial/atual do jogo
+        savePlayers().then(() => {
+          showNotification(
+            games[gameDate].players.length === 0
+              ? "Novo jogo criado!"
+              : "Jogo carregado!",
+            "success"
+          );
+        });
+      }
+
+      // Modificar a função addPlayerToGame para garantir o salvamento
+      async function addPlayerToGame() {
+        try {
+          const gameDate = document.getElementById("gameDate").value;
+          const playerName = document
+            .getElementById("gamePlayerName")
+            .value.trim();
+
+          if (!gameDate) {
+            showNotification("Selecione uma data primeiro!", "error");
+            return;
+          }
+
+          if (!playerName) {
+            showNotification("Digite o nome do jogador!", "error");
+            return;
+          }
+
+          // Garantir que o objeto games e a data existam
+          if (!games) games = {};
+          if (!games[gameDate]) games[gameDate] = { players: [] };
+
+          // Verificar duplicatas
+          if (
+            games[gameDate].players.some(
+              (p) => p.name.toLowerCase() === playerName.toLowerCase()
+            )
+          ) {
+            showNotification("Jogador já está neste jogo!", "error");
+            return;
+          }
+
+          // Adicionar jogador
+          games[gameDate].players.unshift({
+            name: playerName,
+            goals: 0
+          });
+
+          // Salvar imediatamente
+          await savePlayers();
+
+          // Limpar campo e atualizar interface
+          document.getElementById("gamePlayerName").value = "";
+          updateGamePlayersList();
+          updateMonthlyRanking();
+          showNotification("Jogador adicionado com sucesso!", "success");
+        } catch (error) {
+          console.error("Erro ao adicionar jogador:", error);
+          showNotification("Erro ao adicionar jogador!", "error");
+        }
+      }
+
+      // Manter apenas a correção da formatação da data
+      function updateGamePlayersList() {
+        const gameDate = document.getElementById("gameDate").value;
+        const gamePlayersList = document.getElementById("gamePlayersList");
+        const gameDateTitle = document.getElementById("gameDateTitle");
+
+        // Corrigir a formatação da data
+        const [year, month, day] = gameDate.split("-");
+        const formattedDate = `${day}/${month}/${year}`;
+        gameDateTitle.textContent = `Jogadores Participantes - ${formattedDate}`;
+
+        gamePlayersList.innerHTML = "";
+
+        if (!games[gameDate]) return;
+
+        games[gameDate].players.forEach((player, index) => {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-gray-50";
+          tr.innerHTML = `
+            <td class="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+              <span class="font-medium text-gray-900">${player.name}</span>
+            </td>
+            <td class="px-3 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">
+              <span class="font-medium">${player.goals}</span>
+            </td>
+            <td class="px-3 sm:px-4 py-2 sm:py-3">
+              <div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
+                <div class="flex items-center gap-1">
+                  <button onclick="removeGameGoal(${index})" 
+                    class="px-2 sm:px-3 py-1 sm:py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 ${
+                      player.goals === 0 ? "opacity-50 cursor-not-allowed" : ""
+                    }">
+                    -
+                  </button>
+                  <button onclick="addGameGoal(${index})" 
+                    class="px-2 sm:px-3 py-1 sm:py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">
+                    +
+                  </button>
+                </div>
+                <button onclick="removePlayerFromGame(${index})" 
+                  class="px-2 sm:px-4 py-1 sm:py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">
+                  Remover
+                </button>
+              </div>
+            </td>
+          `;
+          gamePlayersList.appendChild(tr);
+        });
+      }
+
+      // Modificar a função addGameGoal para garantir salvamento
+      async function addGameGoal(playerIndex) {
+        const gameDate = document.getElementById("gameDate").value;
+        if (!games[gameDate] || !games[gameDate].players[playerIndex]) return;
+
+        games[gameDate].players[playerIndex].goals++;
+
+        try {
+          await savePlayers();
+          updateGamePlayersList();
+          updateMonthlyRanking();
+        } catch (error) {
+          console.error("Erro ao salvar gol:", error);
+          showNotification("Erro ao salvar gol!", "error");
+        }
+      }
+
+      // Modificar a função removeGameGoal para garantir salvamento
+      async function removeGameGoal(playerIndex) {
+        const gameDate = document.getElementById("gameDate").value;
+        if (!games[gameDate] || !games[gameDate].players[playerIndex]) return;
+
+        if (games[gameDate].players[playerIndex].goals > 0) {
+          games[gameDate].players[playerIndex].goals--;
+
+          try {
+            await savePlayers();
+            updateGamePlayersList();
+            updateMonthlyRanking();
+          } catch (error) {
+            console.error("Erro ao remover gol:", error);
+            showNotification("Erro ao remover gol!", "error");
+          }
+        }
+      }
+
+      // Modificar a função removePlayerFromGame para garantir salvamento
+      async function removePlayerFromGame(playerIndex) {
+        const gameDate = document.getElementById("gameDate").value;
+
+        if (confirm("Tem certeza que deseja remover este jogador do jogo?")) {
+          games[gameDate].players.splice(playerIndex, 1);
+
+          try {
+            await savePlayers();
+            updateGamePlayersList();
+            updateMonthlyRanking();
+            showNotification("Jogador removido do jogo!", "success");
+          } catch (error) {
+            console.error("Erro ao remover jogador:", error);
+            showNotification("Erro ao remover jogador!", "error");
+          }
+        }
+      }
+
+      // Atualizar select de meses
+      function updateMonthSelect() {
+        const monthSelect = document.getElementById("monthSelect");
+        const months = new Set();
+
+        Object.keys(games).forEach((date) => {
+          const month = date.substring(0, 7); // YYYY-MM
+          months.add(month);
+        });
+
+        const sortedMonths = Array.from(months).sort().reverse();
+        monthSelect.innerHTML = sortedMonths
+          .map((month) => {
+            const [year, monthNum] = month.split("-");
+            const monthName = new Date(`${month}-01`).toLocaleString("pt-BR", {
+              month: "long"
+            });
+            return `<option value="${month}">${monthName} ${year}</option>`;
+          })
+          .join("");
+
+        updateMonthlyRanking();
+      }
+
+      // Atualizar ranking mensal
+      function updateMonthlyRanking() {
+        const selectedMonth = document.getElementById("monthSelect").value;
+        const monthlyStats = {};
+
+        // Calcular estatísticas do mês
+        Object.entries(games).forEach(([date, game]) => {
+          if (date.startsWith(selectedMonth)) {
+            game.players.forEach((player) => {
+              if (!monthlyStats[player.name]) {
+                monthlyStats[player.name] = { goals: 0, games: 0 };
+              }
+              monthlyStats[player.name].goals += player.goals;
+              monthlyStats[player.name].games++;
+            });
+          }
+        });
+
+        // Ordenar jogadores por gols
+        const sortedPlayers = Object.entries(monthlyStats)
+          .map(([name, stats]) => ({
+            name,
+            ...stats,
+            average: (stats.goals / stats.games).toFixed(2)
+          }))
+          .sort((a, b) => b.goals - a.goals);
+
+        // Atualizar tabela
+        const rankingTable = document.getElementById("monthlyRankingTable");
+        rankingTable.innerHTML = sortedPlayers
+          .map(
+            (player, index) => `
+          <tr class="hover:bg-gray-50">
+            <td class="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap font-medium text-gray-900">${
+              index + 1
+            }º</td>
+            <td class="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap">${
+              player.name
+            }</td>
+            <td class="px-3 sm:px-4 py-2 sm:py-3 text-center">${
+              player.goals
+            }</td>
+            <td class="px-3 sm:px-4 py-2 sm:py-3 text-center">${
+              player.games
+            }</td>
+            <td class="px-3 sm:px-4 py-2 sm:py-3 text-center">${
+              player.average
+            }</td>
+          </tr>
+        `
+          )
+          .join("");
+      }
+
+      // Adicionar notificação responsiva
+      function showNotification(message, type = "success") {
+        const notification = document.createElement("div");
+        notification.className = `fixed bottom-4 right-4 left-4 sm:left-auto p-4 rounded-lg ${
+          type === "success" ? "bg-green-500" : "bg-red-500"
+        } text-white text-center sm:text-left max-w-sm mx-auto sm:mx-0`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+      }
+
+      // Adicionar a função de exportação no script
+      async function exportGameAsImage() {
+        const gameDate = document.getElementById("gameDate").value;
+        if (!games[gameDate]?.players?.length) {
+          showNotification("Não há dados para exportar!", "error");
+          return;
+        }
+
+        try {
+          showNotification("Gerando imagem...", "success");
+
+          // Preparar dados
+          const [year, month, day] = gameDate.split("-");
+          const formattedDate = `${day}/${month}/${year}`;
+          const exportGameDate = document.getElementById("exportGameDate");
+          const exportTableBody = document.getElementById("exportTableBody");
+          const exportTotalGols = document.getElementById("exportTotalGols");
+
+          exportGameDate.textContent = `Partida do dia ${formattedDate}`;
+
+          // Preencher tabela
+          let totalGols = 0;
+          exportTableBody.innerHTML = games[gameDate].players
+            .sort((a, b) => b.goals - a.goals)
+            .map((player) => {
+              totalGols += player.goals;
+              return `
+                <tr>
+                  <td class="border border-gray-200 px-6 py-4 text-lg text-gray-800">
+                    ${player.name}
+                  </td>
+                  <td class="border border-gray-200 px-6 py-4 text-center text-lg text-gray-800">
+                    ${player.goals}
+                  </td>
+                </tr>
+              `;
+            })
+            .join("");
+
+          exportTotalGols.textContent = totalGols;
+
+          // Mostrar container
+          const exportContainer = document.getElementById("exportContainer");
+          const exportContent = document.getElementById("exportContent");
+          exportContainer.classList.remove("hidden");
+
+          // Aguardar renderização
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
+          try {
+            // Capturar a imagem
+            const canvas = await html2canvas(exportContent, {
+              backgroundColor: "#ffffff",
+              scale: 2,
+              useCORS: true,
+              logging: true,
+              allowTaint: true,
+              onclone: function (clonedDoc) {
+                const clonedElement = clonedDoc.getElementById("exportContent");
+                clonedElement.style.transform = "scale(1)";
+              }
+            });
+
+            // Converter e baixar
+            const image = canvas.toDataURL("image/png", 1.0);
+            const link = document.createElement("a");
+            link.download = `segundao-fc-${gameDate}.png`;
+            link.href = image;
+            link.click();
+
+            showNotification("Imagem exportada com sucesso!", "success");
+          } catch (error) {
+            throw new Error("Erro ao gerar canvas: " + error.message);
+          }
+
+          // Ocultar container
+          exportContainer.classList.add("hidden");
+        } catch (error) {
+          console.error("Erro ao exportar:", error);
+          showNotification(
+            "Erro ao gerar imagem! Verifique o console.",
+            "error"
+          );
+        }
+      }
+    </script>
+  </body>
+</html>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
+
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
